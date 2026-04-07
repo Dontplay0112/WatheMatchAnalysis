@@ -37,13 +37,6 @@ class StatsAPI(BaseAPICommand):
         
         # 计算小脑操作 (TK): 凶手是自己，且受害者阵营与自己相同，且都不是 UNKNOWN, 
         tk_count = 0
-        # tk_count = db.query(func.count(KillLog.id)).filter(
-        #     KillLog.killer_name == player_name,
-        #     KillLog.killer_faction == KillLog.victim_faction,
-        #     KillLog.killer_faction != "KILLER",
-        #     KillLog.killer_faction != "KILLER",
-        #     KillLog.victim_faction != "UNKNOWN"
-        # ).scalar() or 0
         tk_count = db.query(func.count(DeathLog.id)).filter(
             DeathLog.victim_name == player_name,
             # DeathLog.victim_faction == "CIVILIAN",

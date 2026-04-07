@@ -157,3 +157,36 @@ class XiaonaoAPI(BaseAPICommand):
             
         reply = format_reply(reply)
         return {"reply": reply.strip()}
+
+
+class SurvRateAPI(BaseAPICommand):
+    @property
+    def action(self) -> list[str]:
+        return ["survrate", "sr"]
+
+    @property
+    def description(self) -> str:
+        return "🛡️ 耐活榜 (≥5局)"
+
+    @property
+    def requires_player(self) -> bool:
+        return False
+
+    def execute(self, db: Session = Depends(get_db)):
+        results = db.query(
+            MatchPlayer.player_name,
+            func.count(MatchPlayer.id).label('plays'),
+            func.sum(case((MatchPlayer.end_status == "ALIVE", 1), else_=0)).label('survivals')
+        ).group_by(MatchPlayer.player_name).having(func.count(MatchPlayer.id) >= 5).all()
+
+        sorted_res = sorted(results, key=lambda x: x.survivals / x.plays if x.plays else 0, reverse=True)[:10]
+
+        reply = "🛡️ 耐活榜 (≥5场)\n"
+        if not sorted_res:
+            reply += "暂无符合条件的玩家数据。\n"
+        for i, r in enumerate(sorted_res, 1):
+            rate = r.survivals / r.plays * 100
+            reply += f"{i}. {r.player_name} - {rate:.1f}% ({r.survivals}/{r.plays})\n"
+            
+        reply = format_reply(reply)
+        return {"reply": reply.strip()}
