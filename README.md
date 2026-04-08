@@ -1,62 +1,44 @@
-# 海豹js扩展模板
+# 海豹骰列车杀手对局分析插件及python后端
 
 
-### 介绍
+## 介绍
 
-一个简单易用的项目模板。
+一个用于分析MC列车杀手对局的项目，包含：
+* 一个js插件，加载进海豹骰后从python后端获取分析数据
+* 一个python后端，提供了若干接口，实现接收游戏数据并分析，同时接受js插件的请求并返回分析结果
 
-使用esbuild编译代码，并将多个源码文件打包成一个。
 
+## 如何使用
 
-### 如何使用
+### JS插件
 
-clone或下载项目，随后:
+1. clone或下载项目
 
-```
+2. 修改`src\utils.ts`中的`API_BASE_URL`为你的python后端地址(直接运行python后端，一般不需要修改)
+
+3. 安装依赖并编译js插件(需要Node.js环境)：
+``` bash
 npm install
 npm run build
 ```
 
-好的，现在你的项目被编译成功了，就在dist目录。
+将`dist`目录下的js文件加载进海豹骰
 
-默认的名字是`sealdce-js-ext.js`，其逻辑写在src/index.ts
+### python后端
 
-
-### 开发指南
-
-看这里，这边有大量的例子，以及海豹用户写的插件：
-
-https://github.com/sealdice/javascript
-
-由于无法动态调试，建议将纯逻辑部分独立编写，随后你就可以在调试编译后，用nodejs去验证你的想法:
-
+``` bash
+cd server
+uv init
+uv sync
+uv run run.py
 ```
-npm run build-dev
-node ./dev/sealdice-js-ext.js
+或者其他任意配置python环境的方式都可以。
+
+### 游戏
+
+除此以外还需要在游戏中安装[RecordWathe](https://github.com/Dontplay0112/RecordWathe)模组，并修改配置文件`config/recordwathe.json`用于自动上传对局记录:
+``` json
+{
+  "backendUrl": "http://YOUR_PYTHON_BACKEND_IP:8897/api/upload_match"
+}
 ```
-
-当然，不止是node，任何其他js环境都行，浏览器里也行。
-
-
-### 填写个人信息
-
-当插件开发完成后(或者开始开发时)，你需要修改几处地方：
-
-* header.txt 这个文件是你插件的描述信息
-
-* tools/build-config.js 最开头一行"var filename = 'sealdce-js-ext.js';"，改成你中意的名字，注意不要与现有的重名
-
-
-### 编译和发布
-
-```
-npm run build
-```
-
-从dist目录找出你的编译结果，将其装入海豹测试并分享即可！
-
-当然，你也可以把你的劳动成果提交到这里：
-
-https://github.com/sealdice/javascript/tree/main/scripts
-
-这样用户就可以直接在海豹的插件面板进行安装了。
