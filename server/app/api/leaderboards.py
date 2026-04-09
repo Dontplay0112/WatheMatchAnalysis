@@ -1,6 +1,7 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, Integer, case
+from itertools import combinations
 
 from app.core.base_api import BaseAPICommand
 from app.core.database import get_db
@@ -188,5 +189,84 @@ class SurvRateAPI(BaseAPICommand):
             rate = r.survivals / r.plays * 100
             reply += f"{i}. {r.player_name} - {rate:.1f}% ({r.survivals}/{r.plays})\n"
             
+        reply = format_reply(reply)
+        return {"reply": reply.strip()}
+
+
+class KillerDuoWinRateAPI(BaseAPICommand):
+    @property
+    def action(self) -> list[str]:
+        return ["killerduo", "kdw", "duowr"]
+
+    @property
+    def description(self) -> str:
+        return "🤝 杀手搭档胜率榜 (≥5局)"
+
+    @property
+    def requires_player(self) -> bool:
+        return False
+
+    def execute(self, db: Session = Depends(get_db)):
+        killer_rows = db.query(
+            MatchPlayer.match_id,
+            MatchPlayer.player_name,
+            MatchPlayer.is_winner
+        ).filter(
+            MatchPlayer.faction == "KILLER"
+        ).all()
+
+        match_killers = {}
+        for row in killer_rows:
+            if not row.match_id or not row.player_name:
+                continue
+            match_killers.setdefault(row.match_id, []).append(row)
+
+        duo_stats = {}
+        for killers in match_killers.values():
+            if len(killers) < 2:
+                continue
+
+            players = []
+            winner_map = {}
+            for k in killers:
+                if k.player_name in winner_map:
+                    # 去重，避免异常数据导致同局同名重复计数
+                    winner_map[k.player_name] = winner_map[k.player_name] or bool(k.is_winner)
+                    continue
+                players.append(k.player_name)
+                winner_map[k.player_name] = bool(k.is_winner)
+
+            if len(players) < 2:
+                continue
+
+            for p1, p2 in combinations(sorted(players), 2):
+                pair_key = (p1, p2)
+                duo_stats.setdefault(pair_key, {"plays": 0, "wins": 0})
+                duo_stats[pair_key]["plays"] += 1
+                if winner_map.get(p1, False) and winner_map.get(p2, False):
+                    duo_stats[pair_key]["wins"] += 1
+
+        qualified = []
+        for pair, stat in duo_stats.items():
+            plays = stat["plays"]
+            wins = stat["wins"]
+            if plays < 5:
+                continue
+            rate = wins / plays
+            qualified.append({"pair": pair, "plays": plays, "wins": wins, "rate": rate})
+
+        sorted_res = sorted(
+            qualified,
+            key=lambda x: (x["rate"], x["wins"], x["plays"]),
+            reverse=True
+        )[:10]
+
+        reply = "🤝 杀手搭档胜率榜 (≥5场)\n"
+        if not sorted_res:
+            reply += "暂无符合条件的搭档数据。\n"
+        for i, r in enumerate(sorted_res, 1):
+            p1, p2 = r["pair"]
+            reply += f"{i}. {p1} & {p2} - {r['rate'] * 100:.1f}% ({r['wins']}/{r['plays']})\n"
+
         reply = format_reply(reply)
         return {"reply": reply.strip()}
