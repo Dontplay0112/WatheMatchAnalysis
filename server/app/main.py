@@ -38,8 +38,6 @@ api_manager.register(KDRatioAPI())
 api_manager.register(XiaonaoAPI())
 api_manager.register(SurvRateAPI())
 api_manager.register(KillerDuoWinRateAPI())
-api_manager.register(GoodDuoWinRateAPI())
-api_manager.register(GoodKillerDuoWinRateAPI())
 api_manager.register(KilledByAPI())
 api_manager.register(KillingAPI())
 
