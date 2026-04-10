@@ -11,7 +11,7 @@ from app.api.roles import RolesAPI
 from app.api.deaths import DeathsAPI
 from app.api.refresh import RefreshAPI
 from app.api.upload import UploadMatchAPI
-from app.api.leaderboards import SurvRateAPI, WinRateAPI, DeathRateAPI, KDRatioAPI, XiaonaoAPI, KillerDuoWinRateAPI, GoodDuoWinRateAPI, GoodKillerDuoWinRateAPI
+from app.api.leaderboards import SurvRateAPI, WinRateAPI, DeathRateAPI, KDRatioAPI, XiaonaoAPI, KillerDuoWinRateAPI
 from app.api.nemesis import KilledByAPI, KillingAPI
 
 @asynccontextmanager
