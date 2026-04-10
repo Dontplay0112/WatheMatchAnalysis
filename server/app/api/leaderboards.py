@@ -356,7 +356,7 @@ class GoodKillerDuoWinRateAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🤝 好人+杀手搭档胜率榜 (≥5局)"
+        return "🤝 好人+杀手综合搭档胜率榜 (≥5局)"
 
     @property
     def requires_player(self) -> bool:
@@ -401,9 +401,10 @@ class GoodKillerDuoWinRateAPI(BaseAPICommand):
             for p1, p2 in combinations(sorted(players), 2):
                 f1 = player_info[p1]["faction"]
                 f2 = player_info[p2]["faction"]
-                if f1 == f2:
+                # 综合榜只统计同阵营搭档，范围限定在好人/杀手两种阵营
+                if f1 != f2:
                     continue
-                if {f1, f2} != {"CIVILIAN", "KILLER"}:
+                if f1 not in {"CIVILIAN", "KILLER"}:
                     continue
 
                 pair_key = (p1, p2)
@@ -426,7 +427,7 @@ class GoodKillerDuoWinRateAPI(BaseAPICommand):
             reverse=True
         )[:10]
 
-        reply = "🤝 好人+杀手搭档胜率榜 (≥5场)\n"
+        reply = "🤝 好人+杀手综合搭档胜率榜 (≥5场)\n"
         if not sorted_res:
             reply += "暂无符合条件的搭档数据。\n"
         for i, r in enumerate(sorted_res, 1):
