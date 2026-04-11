@@ -142,19 +142,47 @@ class XiaonaoAPI(BaseAPICommand):
         return False
 
     def execute(self, db: Session = Depends(get_db)):
-        results = db.query(
+        xiaonao_rows = db.query(
             DeathLog.victim_name,
-            func.count(DeathLog.id).label('count')
+            func.count(DeathLog.id).label('xiaonao_count')
         ).filter(
             DeathLog.victim_faction == "CIVILIAN",
             DeathLog.death_reason == "wathe:shot_innocent"
-        ).group_by(DeathLog.victim_name).order_by(func.count(DeathLog.id).desc()).limit(10).all()
+        ).group_by(DeathLog.victim_name).all()
 
-        reply = "🧠 小脑排行榜\n"
-        if not results:
+        plays_rows = db.query(
+            MatchPlayer.player_name,
+            func.count(MatchPlayer.id).label('plays')
+        ).group_by(MatchPlayer.player_name).all()
+
+        plays_map = {row.player_name: row.plays for row in plays_rows if row.player_name}
+
+        prob_list = []
+        for row in xiaonao_rows:
+            if not row.victim_name:
+                continue
+            plays = plays_map.get(row.victim_name, 0)
+            if plays <= 0:
+                continue
+            rate = row.xiaonao_count / plays
+            prob_list.append({
+                "name": row.victim_name,
+                "xiaonao_count": row.xiaonao_count,
+                "plays": plays,
+                "rate": rate,
+            })
+
+        sorted_res = sorted(
+            prob_list,
+            key=lambda x: (x["rate"], x["xiaonao_count"], x["plays"]),
+            reverse=True
+        )[:10]
+
+        reply = "🧠 小脑概率排行榜\n"
+        if not sorted_res:
             reply += "无人小脑......暂时的......\n"
-        for i, r in enumerate(results, 1):
-            reply += f"{i}. {r.victim_name} - {r.count}次\n"
+        for i, r in enumerate(sorted_res, 1):
+            reply += f"{i}. {r['name']} - {r['rate'] * 100:.1f}% ({r['xiaonao_count']}/{r['plays']})\n"
             
         reply = format_reply(reply)
         return {"reply": reply.strip()}
