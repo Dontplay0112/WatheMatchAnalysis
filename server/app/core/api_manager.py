@@ -1,4 +1,5 @@
 import json
+import inspect
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.orm import Session
 
@@ -41,6 +42,7 @@ class APIManager:
         
         action = data.get("action", "help").lower() or "help"
         player_name = data.get("player_name", "")
+        faction = data.get("faction", "")
 
         if action == "help":
             return {"reply": self._handle_help()}
@@ -53,7 +55,7 @@ class APIManager:
         if error_reply:
             return {"reply": error_reply}
 
-        return self._execute_handler(handler, player_name, db)
+        return self._execute_handler(handler, player_name, faction, db)
 
     def _validate_player(self, handler: BaseAPICommand, player_name: str, db: Session) -> str | None:
         """检查玩家约束，返回错误信息字符或者 None 作为通过"""
@@ -68,12 +70,21 @@ class APIManager:
 
         return None
 
-    def _execute_handler(self, handler: BaseAPICommand, player_name: str, db: Session) -> dict:
+    def _execute_handler(self, handler: BaseAPICommand, player_name: str, faction: str, db: Session) -> dict:
         try:
-            if handler.requires_player:
-                return handler.execute(player_name=player_name, db=db)
-            else:
-                return handler.execute(db=db)
+            # 仅传入命令 execute 明确声明过的参数，避免影响历史命令签名
+            signature = inspect.signature(handler.execute)
+            params = signature.parameters
+
+            kwargs = {}
+            if "db" in params:
+                kwargs["db"] = db
+            if "player_name" in params:
+                kwargs["player_name"] = player_name
+            if "faction" in params:
+                kwargs["faction"] = faction
+
+            return handler.execute(**kwargs)
         except Exception as e:
             return {"reply": f"❌ 查询后端时发生异常: {str(e)}"}
 

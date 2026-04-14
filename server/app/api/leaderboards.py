@@ -298,3 +298,94 @@ class KillerDuoWinRateAPI(BaseAPICommand):
 
         reply = format_reply(reply)
         return {"reply": reply.strip()}
+
+
+class FactionWinRateAPI(BaseAPICommand):
+    @property
+    def action(self) -> list[str]:
+        return ["factionwr", "fwr"]
+
+    @property
+    def description(self) -> str:
+        return "🏳️ 阵营胜率榜 (civilian/killer/neutral)"
+
+    @property
+    def requires_player(self) -> bool:
+        return False
+
+    def execute(self, db: Session = Depends(get_db), faction: str = "", player_name: str = ""):
+        # 兼容当前指令网关只传第二参数的场景：允许把 faction 写在 player_name 位置
+        faction_raw = (faction or player_name or "").strip().lower()
+
+        faction_alias = {
+            "civilian": "CIVILIAN",
+            "good": "CIVILIAN",
+            "goodguy": "CIVILIAN",
+            "平民": "CIVILIAN",
+            "好人": "CIVILIAN",
+            "killer": "KILLER",
+            "杀手": "KILLER",
+            "neutral": "NEUTRAL",
+            "中立": "NEUTRAL",
+            "c": "CIVILIAN",
+            "k": "KILLER",
+            "n": "NEUTRAL",
+        }
+
+        target_faction = faction_alias.get(faction_raw, "") if faction_raw else ""
+        if faction_raw and not target_faction:
+            msg = "❌ 阵营参数无效，可用: civilian/killer/neutral（或 平民/杀手/中立）"
+            return {"reply": format_reply(msg).strip()}
+
+        query = db.query(
+            MatchPlayer.faction,
+            func.count(MatchPlayer.id).label("plays"),
+            func.sum(func.cast(MatchPlayer.is_winner, Integer)).label("wins")
+        ).filter(
+            MatchPlayer.faction.in_(["CIVILIAN", "KILLER", "NEUTRAL"])
+        )
+
+        if target_faction:
+            query = query.filter(MatchPlayer.faction == target_faction)
+
+        results = query.group_by(MatchPlayer.faction).all()
+
+        faction_name_cn = {
+            "CIVILIAN": "平民",
+            "KILLER": "杀手",
+            "NEUTRAL": "中立",
+        }
+
+        stats = []
+        for r in results:
+            plays = r.plays or 0
+            wins = r.wins or 0
+            if plays <= 0:
+                continue
+            stats.append({
+                "faction": r.faction,
+                "plays": plays,
+                "wins": wins,
+                "rate": wins / plays,
+            })
+
+        sorted_res = sorted(
+            stats,
+            key=lambda x: (x["rate"], x["wins"], x["plays"]),
+            reverse=True
+        )
+
+        title = "🏳️ 阵营胜率榜"
+        if target_faction:
+            title += f" ({faction_name_cn.get(target_faction, target_faction)})"
+        title += "\n"
+
+        reply = title
+        if not sorted_res:
+            reply += "暂无符合条件的阵营数据。\n"
+        for i, row in enumerate(sorted_res, 1):
+            fac = faction_name_cn.get(row["faction"], row["faction"])
+            reply += f"{i}. {fac} - {row['rate'] * 100:.1f}% ({row['wins']}/{row['plays']})\n"
+
+        reply = format_reply(reply)
+        return {"reply": reply.strip()}

@@ -11,7 +11,7 @@ from app.api.roles import RolesAPI
 from app.api.deaths import DeathsAPI
 from app.api.refresh import RefreshAPI
 from app.api.upload import UploadMatchAPI
-from app.api.leaderboards import SurvRateAPI, WinRateAPI, DeathRateAPI, KDRatioAPI, XiaonaoAPI, KillerDuoWinRateAPI
+from app.api.leaderboards import SurvRateAPI, WinRateAPI, DeathRateAPI, KDRatioAPI, XiaonaoAPI, KillerDuoWinRateAPI, FactionWinRateAPI
 from app.api.nemesis import KilledByAPI, KillingAPI
 
 @asynccontextmanager
@@ -38,6 +38,7 @@ api_manager.register(KDRatioAPI())
 api_manager.register(XiaonaoAPI())
 api_manager.register(SurvRateAPI())
 api_manager.register(KillerDuoWinRateAPI())
+api_manager.register(FactionWinRateAPI())
 api_manager.register(KilledByAPI())
 api_manager.register(KillingAPI())
 
