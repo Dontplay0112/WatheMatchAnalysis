@@ -176,7 +176,7 @@ class XiaonaoAPI(BaseAPICommand):
             prob_list,
             key=lambda x: (x["rate"], x["xiaonao_count"], x["plays"]),
             reverse=True
-        )[:10]
+        )[:]
 
         reply = "🧠 小脑概率排行榜\n"
         if not sorted_res:
