@@ -195,7 +195,7 @@ class RevolverAvgUseAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🔫 Revolver平均每局使用次数 (≥5局)"
+        return "🔫 平均每局开枪次数次数 (≥5局)"
 
     @property
     def requires_player(self) -> bool:
@@ -237,7 +237,7 @@ class RevolverAvgUseAPI(BaseAPICommand):
             reverse=True
         )[:10]
 
-        reply = "🔫 Revolver平均每局使用次数榜 (≥5场)\n"
+        reply = "🔫 平均每局开枪次数次数 (≥5场)\n"
         if not sorted_res:
             reply += "暂无符合条件的玩家数据。\n"
         for i, r in enumerate(sorted_res, 1):
