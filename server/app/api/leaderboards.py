@@ -195,7 +195,7 @@ class RevolverAvgUseAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🔫 平均每局开枪次数次数 (≥5局)"
+        return "🔫 平均每局开枪次数 (≥5局)"
 
     @property
     def requires_player(self) -> bool:
@@ -242,6 +242,67 @@ class RevolverAvgUseAPI(BaseAPICommand):
             reply += "暂无符合条件的玩家数据。\n"
         for i, r in enumerate(sorted_res, 1):
             reply += f"{i}. {r['name']} - {r['avg']:.2f}次/局 ({r['uses']}/{r['plays']})\n"
+
+        reply = format_reply(reply)
+        return {"reply": reply.strip()}
+
+
+class GunHitRateAPI(BaseAPICommand):
+    @property
+    def action(self) -> list[str]:
+        return ["gunhit", "ghr", "gunrate"]
+
+    @property
+    def description(self) -> str:
+        return "🎯 枪命中率榜 (击杀/开枪, ≥20枪)"
+
+    @property
+    def requires_player(self) -> bool:
+        return False
+
+    def execute(self, db: Session = Depends(get_db)):
+        shot_rows = db.query(
+            ItemUserLog.player_name,
+            func.count(ItemUserLog.id).label("shots")
+        ).filter(
+            ItemUserLog.item == "wathe:revolver"
+        ).group_by(ItemUserLog.player_name).having(func.count(ItemUserLog.id) >= 20).all()
+
+        kill_rows = db.query(
+            KillLog.killer_name.label("player_name"),
+            func.count(KillLog.id).label("kills")
+        ).filter(
+            KillLog.death_reason == "wathe:gun_shot"
+        ).group_by(KillLog.killer_name).all()
+
+        kills_map = {row.player_name: row.kills for row in kill_rows if row.player_name}
+
+        stats = []
+        for row in shot_rows:
+            if not row.player_name:
+                continue
+            shots = row.shots or 0
+            if shots <= 0:
+                continue
+            kills = kills_map.get(row.player_name, 0)
+            stats.append({
+                "name": row.player_name,
+                "kills": kills,
+                "shots": shots,
+                "rate": kills / shots,
+            })
+
+        sorted_res = sorted(
+            stats,
+            key=lambda x: (x["rate"], x["kills"], x["shots"]),
+            reverse=True
+        )[:10]
+
+        reply = "🎯 枪命中率排行榜 (≥20枪)\n"
+        if not sorted_res:
+            reply += "暂无符合条件的玩家数据。\n"
+        for i, r in enumerate(sorted_res, 1):
+            reply += f"{i}. {r['name']} - {r['rate'] * 100:.1f}% ({r['kills']}/{r['shots']})\n"
 
         reply = format_reply(reply)
         return {"reply": reply.strip()}
