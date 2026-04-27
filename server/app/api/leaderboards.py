@@ -5,7 +5,7 @@ from itertools import combinations
 
 from app.core.base_api import BaseAPICommand
 from app.core.database import get_db
-from app.core.models import MatchPlayer, KillLog, DeathLog
+from app.core.models import MatchPlayer, KillLog, DeathLog, ItemUserLog
 from app.utils import format_reply
 
 class WinRateAPI(BaseAPICommand):
@@ -184,6 +184,65 @@ class XiaonaoAPI(BaseAPICommand):
         for i, r in enumerate(sorted_res, 1):
             reply += f"{i}. {r['name']} - {r['rate'] * 100:.1f}% ({r['xiaonao_count']}/{r['plays']})\n"
             
+        reply = format_reply(reply)
+        return {"reply": reply.strip()}
+
+
+class RevolverAvgUseAPI(BaseAPICommand):
+    @property
+    def action(self) -> list[str]:
+        return ["revolver", "rv", "revolveravg"]
+
+    @property
+    def description(self) -> str:
+        return "🔫 Revolver平均每局使用次数 (≥5局)"
+
+    @property
+    def requires_player(self) -> bool:
+        return False
+
+    def execute(self, db: Session = Depends(get_db)):
+        plays_rows = db.query(
+            MatchPlayer.player_name,
+            func.count(MatchPlayer.id).label("plays")
+        ).group_by(MatchPlayer.player_name).having(func.count(MatchPlayer.id) >= 5).all()
+
+        revolver_rows = db.query(
+            ItemUserLog.player_name,
+            func.count(ItemUserLog.id).label("uses")
+        ).filter(
+            ItemUserLog.item == "wathe:revolver"
+        ).group_by(ItemUserLog.player_name).all()
+
+        uses_map = {row.player_name: row.uses for row in revolver_rows if row.player_name}
+
+        stats = []
+        for row in plays_rows:
+            if not row.player_name:
+                continue
+            plays = row.plays or 0
+            if plays <= 0:
+                continue
+            uses = uses_map.get(row.player_name, 0)
+            stats.append({
+                "name": row.player_name,
+                "uses": uses,
+                "plays": plays,
+                "avg": uses / plays,
+            })
+
+        sorted_res = sorted(
+            stats,
+            key=lambda x: (x["avg"], x["uses"], x["plays"]),
+            reverse=True
+        )[:10]
+
+        reply = "🔫 Revolver平均每局使用次数榜 (≥5场)\n"
+        if not sorted_res:
+            reply += "暂无符合条件的玩家数据。\n"
+        for i, r in enumerate(sorted_res, 1):
+            reply += f"{i}. {r['name']} - {r['avg']:.2f}次/局 ({r['uses']}/{r['plays']})\n"
+
         reply = format_reply(reply)
         return {"reply": reply.strip()}
 
