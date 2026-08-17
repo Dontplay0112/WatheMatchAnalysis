@@ -25,8 +25,6 @@ uv sync
 uv run run.py
 ```
 
-首次启动会在 `server/data/api_token.txt` 生成管理用的刷新令牌。该文件已被 Git 忽略，请勿公开。
-
 ## RecordWathe 模组
 
 在 `config/recordwathe.json` 中填写后端地址：

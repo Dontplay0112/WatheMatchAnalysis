@@ -1,20 +1,19 @@
 from fastapi.testclient import TestClient
 
-from app.api import upload
-from app.core import blacklist, security
+from app.api import refresh, upload
+from app.core import blacklist
 from app.core.database import get_db
 from app.main import app
 
 
 def test_http_gateway_and_open_upload(db, tmp_path, monkeypatch):
-    token_file = tmp_path / "api_token.txt"
     matches_dir = tmp_path / "matches"
     matches_dir.mkdir()
     blacklist_file = tmp_path / "blacklist.txt"
     blacklist_file.write_text("BlockedPlayer\n", encoding="utf-8")
 
-    monkeypatch.setattr(security, "API_TOKEN_FILE", token_file)
     monkeypatch.setattr(upload, "MATCHES_DIR", matches_dir)
+    monkeypatch.setattr(refresh, "scan_and_import_all", lambda db: None)
     monkeypatch.setattr(blacklist, "BLACKLIST_FILE", blacklist_file)
 
     def override_db():
@@ -39,7 +38,7 @@ def test_http_gateway_and_open_upload(db, tmp_path, monkeypatch):
         assert blocked.status_code == 200
         assert "屏蔽" in blocked.json()["reply"]
 
-        assert client.get("/api/refresh").status_code == 401
+        assert client.get("/api/refresh").status_code == 200
         uploaded = client.post("/api/upload_match", json=match)
         assert uploaded.status_code == 200
         assert uploaded.json()["status"] == "success"

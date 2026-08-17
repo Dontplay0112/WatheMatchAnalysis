@@ -5,8 +5,6 @@ from app.core.database import SessionLocal
 from app.core.api_manager import APIManager
 from app.core.importer import scan_and_import_all
 from app.core.migrations import run_migrations
-from app.core.paths import API_TOKEN_FILE
-from app.core.security import ensure_api_token
 
 from app.api.state import StatsAPI
 from app.api.roles import RolesAPI
@@ -18,8 +16,6 @@ from app.api.nemesis import KilledByAPI, KillingAPI
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    ensure_api_token()
-    print(f"Wathe 写入令牌文件: {API_TOKEN_FILE}")
     run_migrations()
     db = SessionLocal()
     try:

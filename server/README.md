@@ -11,14 +11,6 @@ uv run run.py
 
 服务默认监听 `0.0.0.0:8897`。数据路径基于本文件所在的 `server` 目录计算，因此从其他工作目录启动也不会把数据写错位置。
 
-## 写入令牌
-
-首次启动会自动生成 `data/api_token.txt`。手动刷新接口必须提供令牌：
-
-- `GET /api/refresh`
-
-可通过 `X-Wathe-Token` 请求头或 `?token=...` 查询参数提供。对局上传接口 `POST /api/upload_match` 无需令牌。令牌文件已加入 `.gitignore`。
-
 ## 黑名单
 
 编辑 `data/blacklist.txt`：
@@ -43,7 +35,6 @@ PlayerTwo
 - `data/data.db`：SQLite 统计数据库。
 - `data/translations.json`：阵营、职业和死因翻译。
 - `data/blacklist.txt`：查询黑名单。
-- `data/api_token.txt`：自动生成的私密写入令牌。
 
 备份文件默认使用对局开始时间命名；没有 `startMs` 时使用 `matchId`。
 
@@ -58,7 +49,7 @@ SealDice 向 `POST /api` 发送：
 }
 ```
 
-该网关是只读查询，无需写入令牌。可使用 `action: help` 查看当前已注册命令。
+该网关是只读查询。可使用 `action: help` 查看当前已注册命令。
 
 所有已启用玩家榜单只纳入总对局数至少 20 局的玩家；个人 `stats`、`roles`、`deaths` 等查询不受此限制。杀手搭档榜还要求两人共同作为杀手至少 5 局。
 

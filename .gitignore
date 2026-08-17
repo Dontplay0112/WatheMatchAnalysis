@@ -15,7 +15,6 @@ dev/
 
 data.db
 matches
-api_token.txt
 
 # Python-generated files
 __pycache__/
