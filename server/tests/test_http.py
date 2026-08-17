@@ -29,7 +29,10 @@ def test_http_gateway_and_open_upload(db, tmp_path, monkeypatch):
     }
 
     try:
-        assert client.post("/api", json={"action": "help"}).status_code == 200
+        help_response = client.post("/api", json={"action": "help"})
+        assert help_response.status_code == 200
+        assert "kr" in help_response.json()["reply"]
+        assert "kbr" in help_response.json()["reply"]
         assert client.post("/api", content=b"not-json").status_code == 422
         blocked = client.post(
             "/api",

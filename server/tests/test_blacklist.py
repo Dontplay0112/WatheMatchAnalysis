@@ -1,5 +1,5 @@
 from app.api.leaderboards import FactionWinRateAPI, MIN_PLAYER_MATCHES, WinRateAPI
-from app.api.nemesis import KilledByAPI
+from app.api.nemesis import KilledByAPI, KilledByRateAPI
 from app.api.state import StatsAPI
 from app.core import blacklist
 from app.core.api_manager import APIManager
@@ -81,6 +81,22 @@ def test_blacklist_hides_names_from_nemesis_lists(db, tmp_path, monkeypatch):
     _add_player_rows(db, "VisibleVictim")
     db.add_all(
         [
+            MatchPlayer(
+                match_id="VisibleVictim-0",
+                player_name="HiddenKiller",
+                faction="CIVILIAN",
+                role="wathe:civilian",
+                is_winner=False,
+                end_status="ALIVE",
+            ),
+            MatchPlayer(
+                match_id="VisibleVictim-1",
+                player_name="VisibleKiller",
+                faction="CIVILIAN",
+                role="wathe:civilian",
+                is_winner=False,
+                end_status="ALIVE",
+            ),
             KillLog(
                 match_id="VisibleVictim-0",
                 killer_name="HiddenKiller",
@@ -98,3 +114,10 @@ def test_blacklist_hides_names_from_nemesis_lists(db, tmp_path, monkeypatch):
     reply = KilledByAPI().execute(player_name="VisibleVictim", db=db)["reply"]
     assert "VisibleKiller" in reply
     assert "HiddenKiller" not in reply
+
+    rate_reply = KilledByRateAPI().execute(
+        player_name="VisibleVictim",
+        db=db,
+    )["reply"]
+    assert "VisibleKiller" in rate_reply
+    assert "HiddenKiller" not in rate_reply

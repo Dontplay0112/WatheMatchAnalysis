@@ -12,7 +12,7 @@ from app.api.deaths import DeathsAPI
 from app.api.refresh import RefreshAPI
 from app.api.upload import UploadMatchAPI
 from app.api.leaderboards import SurvRateAPI, WinRateAPI, DeathRateAPI, KDRatioAPI, XiaonaoAPI, KillerDuoWinRateAPI, FactionWinRateAPI, RevolverAvgUseAPI, GunHitRateAPI
-from app.api.nemesis import KilledByAPI, KillingAPI
+from app.api.nemesis import KilledByAPI, KilledByRateAPI, KillingAPI, KillingRateAPI
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,5 +43,7 @@ api_manager.register(KillerDuoWinRateAPI())
 api_manager.register(FactionWinRateAPI())
 api_manager.register(KilledByAPI())
 api_manager.register(KillingAPI())
+api_manager.register(KillingRateAPI())
+api_manager.register(KilledByRateAPI())
 
 app.include_router(api_manager.router, prefix="/api")
