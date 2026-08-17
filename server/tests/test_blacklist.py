@@ -42,9 +42,11 @@ def test_blacklist_reloads_and_filters_queries(db, tmp_path, monkeypatch):
     assert "HiddenPlayer" not in reply
 
     manager = APIManager()
-    error = manager._validate_player(StatsAPI(), "HIDDENPLAYER", db)
-    assert error is not None
-    assert "屏蔽" in error
+    error = manager._validate_player(StatsAPI(), "HiddenPlayer", db)
+    missing_error = manager._validate_player(StatsAPI(), "MissingPlayer", db)
+    assert error == "❌ 找不到玩家【HiddenPlayer】的对局记录。"
+    assert missing_error == "❌ 找不到玩家【MissingPlayer】的对局记录。"
+    assert "屏蔽" not in error
 
     blacklist_file.write_text("", encoding="utf-8")
     assert not blacklist.is_blacklisted("HiddenPlayer")

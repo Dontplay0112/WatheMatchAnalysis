@@ -73,10 +73,9 @@ class APIManager:
         if not player_name:
             return "❌ 请在指令后加上你要查询的玩家名，或者先使用 .wathe bind 绑定账号！"
 
-        if is_blacklisted(player_name):
-            return f"❌ 玩家【{player_name}】已被管理员屏蔽。"
-
-        if not db.query(MatchPlayer.id).filter(MatchPlayer.player_name == player_name).first():
+        if is_blacklisted(player_name) or not db.query(MatchPlayer.id).filter(
+            MatchPlayer.player_name == player_name
+        ).first():
             return f"❌ 找不到玩家【{player_name}】的对局记录。"
 
         return None

@@ -36,7 +36,7 @@ def test_http_gateway_and_open_upload(db, tmp_path, monkeypatch):
             json={"action": "stats", "player_name": "blockedplayer"},
         )
         assert blocked.status_code == 200
-        assert "屏蔽" in blocked.json()["reply"]
+        assert blocked.json()["reply"] == "❌ 找不到玩家【blockedplayer】的对局记录。"
 
         assert client.get("/api/refresh").status_code == 200
         uploaded = client.post("/api/upload_match", json=match)

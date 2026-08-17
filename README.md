@@ -39,6 +39,6 @@ uv run run.py
 
 编辑 `server/data/blacklist.txt`，每行填写一个 Minecraft 玩家名。空行与 `#` 注释会被忽略，匹配不区分大小写，保存后无需重启。
 
-黑名单只影响查询展示，不会删除历史 JSON 或 SQLite 数据。
+黑名单只影响查询展示，不会删除历史 JSON 或 SQLite 数据。直接查询被屏蔽玩家时，返回结果与玩家不存在相同。
 
 后端详细配置、接口与测试方式见 [`server/README.md`](server/README.md)。
