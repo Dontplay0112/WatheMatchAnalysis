@@ -1,5 +1,5 @@
 from app.api.leaderboards import FactionWinRateAPI, MIN_PLAYER_MATCHES, WinRateAPI
-from app.api.nemesis import KilledByAPI, KilledByRateAPI
+from app.api.nemesis import MIN_SHARED_MATCHES, KilledByAPI, KilledByRateAPI
 from app.api.state import StatsAPI
 from app.core import blacklist
 from app.core.api_manager import APIManager
@@ -78,25 +78,37 @@ def test_blacklist_hides_names_from_nemesis_lists(db, tmp_path, monkeypatch):
     blacklist_file.write_text("HiddenKiller\n", encoding="utf-8")
     monkeypatch.setattr(blacklist, "BLACKLIST_FILE", blacklist_file)
 
-    _add_player_rows(db, "VisibleVictim")
+    _add_player_rows(
+        db,
+        "VisibleVictim",
+        matches=MIN_SHARED_MATCHES + 1,
+    )
+    opponent_rows = []
+    for index in range(MIN_SHARED_MATCHES + 1):
+        opponent_rows.extend(
+            [
+                MatchPlayer(
+                    match_id=f"VisibleVictim-{index}",
+                    player_name="HiddenKiller",
+                    faction="CIVILIAN",
+                    role="wathe:civilian",
+                    is_winner=False,
+                    end_status="ALIVE",
+                ),
+                MatchPlayer(
+                    match_id=f"VisibleVictim-{index}",
+                    player_name="VisibleKiller",
+                    faction="CIVILIAN",
+                    role="wathe:civilian",
+                    is_winner=False,
+                    end_status="ALIVE",
+                ),
+            ]
+        )
+
     db.add_all(
-        [
-            MatchPlayer(
-                match_id="VisibleVictim-0",
-                player_name="HiddenKiller",
-                faction="CIVILIAN",
-                role="wathe:civilian",
-                is_winner=False,
-                end_status="ALIVE",
-            ),
-            MatchPlayer(
-                match_id="VisibleVictim-1",
-                player_name="VisibleKiller",
-                faction="CIVILIAN",
-                role="wathe:civilian",
-                is_winner=False,
-                end_status="ALIVE",
-            ),
+        opponent_rows
+        + [
             KillLog(
                 match_id="VisibleVictim-0",
                 killer_name="HiddenKiller",
