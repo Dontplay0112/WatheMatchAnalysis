@@ -1,29 +1,39 @@
-import os
 import json
 from sqlalchemy.orm import Session
 
-# 注意将这里的相对导入替换为你实际的项目路径
 from app.core.models import (
     Match, MatchPlayer, DeathLog, KillLog, 
     ItemUserLog, TaskCompleteLog, ShopPurchaseLog, DoorInteractionLog
 )
+from app.core.paths import MATCHES_DIR, ensure_data_directories
 
-EXPORT_DIR = "data/matches"
 SUCCESS = "success"
 ERROR = "error"
 EXISTS = "exists"
+SKIPPED = "skipped"
 
 def import_match_json(db: Session, filepath: str):
+    """Import one match atomically and leave the session usable after errors."""
+    try:
+        return _import_match_json(db, filepath)
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _import_match_json(db: Session, filepath: str):
     with open(filepath, 'r', encoding='utf-8') as f:
         data = json.load(f)
         
     match_id = data.get("matchId")
-    if not match_id or db.query(Match).filter_by(match_id=match_id).first():
+    if not match_id:
+        return ERROR
+    if db.query(Match).filter_by(match_id=match_id).first():
         return EXISTS
     
     game_mode = data.get("gameMode", "unknown")
     if game_mode not in ["wathe:murder"]:
-        return SUCCESS
+        return SKIPPED
     
     # 1. 创建主记录
     match_obj = Match(
@@ -146,24 +156,28 @@ def import_match_json(db: Session, filepath: str):
 
 def scan_and_import_all(db: Session):
     """扫描文件夹，导入所有新数据"""
-    os.makedirs(EXPORT_DIR, exist_ok=True)
+    ensure_data_directories()
 
-    total_count = imported_count = error_count = existing_count = 0
+    total_count = imported_count = error_count = existing_count = skipped_count = 0
     
-    for filename in os.listdir(EXPORT_DIR):
-        if filename.endswith(".json"):
-            filepath = os.path.join(EXPORT_DIR, filename)
-            total_count += 1
-            try:
-                result = import_match_json(db, filepath)
-                if result == SUCCESS:
-                    imported_count += 1
-                elif result == ERROR:
-                    error_count += 1
-                elif result == EXISTS:
-                    existing_count += 1
-            except Exception as e:
-                print(f"导入 {filename} 时发生错误: {e}")
+    for filepath in sorted(MATCHES_DIR.glob("*.json")):
+        total_count += 1
+        try:
+            result = import_match_json(db, str(filepath))
+            if result == SUCCESS:
+                imported_count += 1
+            elif result == ERROR:
                 error_count += 1
+            elif result == EXISTS:
+                existing_count += 1
+            elif result == SKIPPED:
+                skipped_count += 1
+        except Exception as e:
+            db.rollback()
+            print(f"导入 {filepath.name} 时发生错误: {e}")
+            error_count += 1
 
-    print(f"扫描完成: 共 {total_count} 个文件, 成功导入 {imported_count} 个, 错误 {error_count} 个, 已存在 {existing_count} 个")
+    print(
+        f"扫描完成: 共 {total_count} 个文件, 成功导入 {imported_count} 个, "
+        f"错误 {error_count} 个, 已存在 {existing_count} 个, 跳过 {skipped_count} 个"
+    )

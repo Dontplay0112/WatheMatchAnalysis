@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.base_api import BaseAPICommand
+from app.core.blacklist import visible_player
 from app.core.database import get_db
 from app.core.models import KillLog
 from app.utils import format_reply
@@ -23,7 +24,8 @@ class KilledByAPI(BaseAPICommand):
         ).filter(
             KillLog.victim_name == player_name,
             KillLog.killer_name != player_name, # 排除自杀
-            KillLog.killer_name.isnot(None)
+            KillLog.killer_name.isnot(None),
+            visible_player(KillLog.killer_name),
         ).group_by(KillLog.killer_name).order_by(func.count(KillLog.id).desc()).limit(10).all()
 
         reply = f"🔪 【{player_name}】：谁在杀我？！\n"
@@ -52,7 +54,8 @@ class KillingAPI(BaseAPICommand):
         ).filter(
             KillLog.killer_name == player_name,
             KillLog.victim_name != player_name, # 排除自杀
-            KillLog.victim_name.isnot(None)
+            KillLog.victim_name.isnot(None),
+            visible_player(KillLog.victim_name),
         ).group_by(KillLog.victim_name).order_by(func.count(KillLog.id).desc()).limit(10).all()
         
         # 统计总的，两个人在一局的次数,应该是一个列表，对应results中的人,然后计算击杀概率，再修改下面的内容

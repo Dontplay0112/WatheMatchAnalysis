@@ -6,7 +6,7 @@ export class UnbindCommand extends BaseCommand {
     usage = "";
     description = "解除已绑定的游戏ID";
 
-    async execute(ext: any, ctx: any, msg: any, cmdArgs: any): Promise<void> {
+    async execute(ext: any, ctx: any, msg: any, _cmdArgs: any): Promise<void> {
         let currentBind = ext.storageGet(`bind_${ctx.player.userId}`);
         
         if (!currentBind) {

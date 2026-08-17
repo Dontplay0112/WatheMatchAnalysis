@@ -4,9 +4,25 @@ from sqlalchemy import func, Integer, case
 from itertools import combinations
 
 from app.core.base_api import BaseAPICommand
+from app.core.blacklist import visible_player
 from app.core.database import get_db
 from app.core.models import MatchPlayer, KillLog, DeathLog, ItemUserLog
 from app.utils import format_reply
+
+
+MIN_PLAYER_MATCHES = 20
+MIN_DUO_MATCHES = 5
+
+
+def eligible_player_names(db: Session) -> set[str]:
+    rows = db.query(MatchPlayer.player_name).filter(
+        MatchPlayer.player_name.isnot(None),
+        visible_player(MatchPlayer.player_name),
+    ).group_by(MatchPlayer.player_name).having(
+        func.count(MatchPlayer.id) >= MIN_PLAYER_MATCHES
+    ).all()
+    return {row.player_name for row in rows if row.player_name}
+
 
 class WinRateAPI(BaseAPICommand):
     @property
@@ -15,7 +31,7 @@ class WinRateAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🏆 胜率榜 (≥5局)"
+        return f"🏆 胜率榜 (≥{MIN_PLAYER_MATCHES}局)"
 
     @property
     def requires_player(self) -> bool:
@@ -26,11 +42,15 @@ class WinRateAPI(BaseAPICommand):
             MatchPlayer.player_name,
             func.count(MatchPlayer.id).label('plays'),
             func.sum(func.cast(MatchPlayer.is_winner, Integer)).label('wins')
-        ).group_by(MatchPlayer.player_name).having(func.count(MatchPlayer.id) >= 5).all()
+        ).filter(
+            visible_player(MatchPlayer.player_name)
+        ).group_by(MatchPlayer.player_name).having(
+            func.count(MatchPlayer.id) >= MIN_PLAYER_MATCHES
+        ).all()
 
         sorted_res = sorted(results, key=lambda x: x.wins / x.plays if x.plays else 0, reverse=True)[:10]
 
-        reply = "🏆 胜率排行榜 (≥5场)\n"
+        reply = f"🏆 胜率排行榜 (≥{MIN_PLAYER_MATCHES}场)\n"
         if not sorted_res:
             reply += "暂无符合条件的玩家数据。\n"
         for i, r in enumerate(sorted_res, 1):
@@ -47,7 +67,7 @@ class DeathRateAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "💀 死亡率榜 (≥5局)"
+        return f"💀 死亡率榜 (≥{MIN_PLAYER_MATCHES}局)"
 
     @property
     def requires_player(self) -> bool:
@@ -58,11 +78,15 @@ class DeathRateAPI(BaseAPICommand):
             MatchPlayer.player_name,
             func.count(MatchPlayer.id).label('plays'),
             func.sum(case((MatchPlayer.end_status != "ALIVE", 1), else_=0)).label('deaths')
-        ).group_by(MatchPlayer.player_name).having(func.count(MatchPlayer.id) >= 5).all()
+        ).filter(
+            visible_player(MatchPlayer.player_name)
+        ).group_by(MatchPlayer.player_name).having(
+            func.count(MatchPlayer.id) >= MIN_PLAYER_MATCHES
+        ).all()
 
         sorted_res = sorted(results, key=lambda x: x.deaths / x.plays if x.plays else 0, reverse=True)[:10]
 
-        reply = "💀 死亡率排行榜 (≥5场)\n"
+        reply = f"💀 死亡率排行榜 (≥{MIN_PLAYER_MATCHES}场)\n"
         if not sorted_res:
             reply += "暂无符合条件的玩家数据。\n"
         for i, r in enumerate(sorted_res, 1):
@@ -79,23 +103,30 @@ class KDRatioAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "⚔️ K/D榜"
+        return f"⚔️ K/D榜 (≥{MIN_PLAYER_MATCHES}局)"
 
     @property
     def requires_player(self) -> bool:
         return False
 
     def execute(self, db: Session = Depends(get_db)):
+        eligible_names = eligible_player_names(db)
+
         # 获取每个玩家的击杀数
         kills_q = db.query(
             KillLog.killer_name.label("name"),
             func.count(KillLog.id).label("kills")
+        ).filter(
+            visible_player(KillLog.killer_name),
+            visible_player(KillLog.victim_name),
         ).group_by(KillLog.killer_name).all()
         
         # 获取每个玩家的死亡数 (从 DeathLog)
         deaths_q = db.query(
             DeathLog.victim_name.label("name"),
             func.count(DeathLog.id).label("deaths")
+        ).filter(
+            visible_player(DeathLog.victim_name)
         ).group_by(DeathLog.victim_name).all()
         
         stats = {}
@@ -109,7 +140,8 @@ class KDRatioAPI(BaseAPICommand):
             
         kd_list = []
         for name, s in stats.items():
-            if not name: continue
+            if not name or name not in eligible_names:
+                continue
             k = s["kills"]
             d = s["deaths"]
             if k < 10 or d < 10:  # 只统计至少10杀10死的玩家，避免数据过于稀疏
@@ -119,7 +151,7 @@ class KDRatioAPI(BaseAPICommand):
             
         sorted_res = sorted(kd_list, key=lambda x: x["kd"], reverse=True)[:10]
 
-        reply = "⚔️ K/D排行榜 (前10)\n"
+        reply = f"⚔️ K/D排行榜 (≥{MIN_PLAYER_MATCHES}场，≥10杀10死)\n"
         if not sorted_res:
             reply += "暂无击杀记录。\n"
         for i, r in enumerate(sorted_res, 1):
@@ -135,7 +167,7 @@ class XiaonaoAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🧠 小脑榜"
+        return f"🧠 小脑榜 (≥{MIN_PLAYER_MATCHES}局)"
 
     @property
     def requires_player(self) -> bool:
@@ -147,13 +179,18 @@ class XiaonaoAPI(BaseAPICommand):
             func.count(DeathLog.id).label('xiaonao_count')
         ).filter(
             DeathLog.victim_faction == "CIVILIAN",
-            DeathLog.death_reason == "wathe:shot_innocent"
+            DeathLog.death_reason == "wathe:shot_innocent",
+            visible_player(DeathLog.victim_name),
         ).group_by(DeathLog.victim_name).all()
 
         plays_rows = db.query(
             MatchPlayer.player_name,
             func.count(MatchPlayer.id).label('plays')
-        ).group_by(MatchPlayer.player_name).all()
+        ).filter(
+            visible_player(MatchPlayer.player_name)
+        ).group_by(MatchPlayer.player_name).having(
+            func.count(MatchPlayer.id) >= MIN_PLAYER_MATCHES
+        ).all()
 
         plays_map = {row.player_name: row.plays for row in plays_rows if row.player_name}
 
@@ -178,7 +215,7 @@ class XiaonaoAPI(BaseAPICommand):
             reverse=True
         )[:]
 
-        reply = "🧠 小脑概率排行榜\n"
+        reply = f"🧠 小脑概率排行榜 (≥{MIN_PLAYER_MATCHES}场)\n"
         if not sorted_res:
             reply += "无人小脑......暂时的......\n"
         for i, r in enumerate(sorted_res, 1):
@@ -195,7 +232,7 @@ class RevolverAvgUseAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🔫 平均每局开枪次数 (≥5局)"
+        return f"🔫 平均每局开枪次数 (≥{MIN_PLAYER_MATCHES}局)"
 
     @property
     def requires_player(self) -> bool:
@@ -205,13 +242,18 @@ class RevolverAvgUseAPI(BaseAPICommand):
         plays_rows = db.query(
             MatchPlayer.player_name,
             func.count(MatchPlayer.id).label("plays")
-        ).group_by(MatchPlayer.player_name).having(func.count(MatchPlayer.id) >= 5).all()
+        ).filter(
+            visible_player(MatchPlayer.player_name)
+        ).group_by(MatchPlayer.player_name).having(
+            func.count(MatchPlayer.id) >= MIN_PLAYER_MATCHES
+        ).all()
 
         revolver_rows = db.query(
             ItemUserLog.player_name,
             func.count(ItemUserLog.id).label("uses")
         ).filter(
-            ItemUserLog.item == "wathe:revolver"
+            ItemUserLog.item == "wathe:revolver",
+            visible_player(ItemUserLog.player_name),
         ).group_by(ItemUserLog.player_name).all()
 
         uses_map = {row.player_name: row.uses for row in revolver_rows if row.player_name}
@@ -237,7 +279,7 @@ class RevolverAvgUseAPI(BaseAPICommand):
             reverse=True
         )[:10]
 
-        reply = "🔫 平均每局开枪次数次数 (≥5场)\n"
+        reply = f"🔫 平均每局开枪次数 (≥{MIN_PLAYER_MATCHES}场)\n"
         if not sorted_res:
             reply += "暂无符合条件的玩家数据。\n"
         for i, r in enumerate(sorted_res, 1):
@@ -315,7 +357,7 @@ class SurvRateAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🛡️ 耐活榜 (≥5局)"
+        return f"🛡️ 耐活榜 (≥{MIN_PLAYER_MATCHES}局)"
 
     @property
     def requires_player(self) -> bool:
@@ -326,11 +368,15 @@ class SurvRateAPI(BaseAPICommand):
             MatchPlayer.player_name,
             func.count(MatchPlayer.id).label('plays'),
             func.sum(case((MatchPlayer.end_status == "ALIVE", 1), else_=0)).label('survivals')
-        ).group_by(MatchPlayer.player_name).having(func.count(MatchPlayer.id) >= 5).all()
+        ).filter(
+            visible_player(MatchPlayer.player_name)
+        ).group_by(MatchPlayer.player_name).having(
+            func.count(MatchPlayer.id) >= MIN_PLAYER_MATCHES
+        ).all()
 
         sorted_res = sorted(results, key=lambda x: x.survivals / x.plays if x.plays else 0, reverse=True)[:10]
 
-        reply = "🛡️ 耐活榜 (≥5场)\n"
+        reply = f"🛡️ 耐活榜 (≥{MIN_PLAYER_MATCHES}场)\n"
         if not sorted_res:
             reply += "暂无符合条件的玩家数据。\n"
         for i, r in enumerate(sorted_res, 1):
@@ -348,19 +394,22 @@ class KillerDuoWinRateAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🤝 杀手搭档胜率榜 (≥5局)"
+        return f"🤝 杀手搭档胜率榜 (双方各≥{MIN_PLAYER_MATCHES}局)"
 
     @property
     def requires_player(self) -> bool:
         return False
 
     def execute(self, db: Session = Depends(get_db)):
+        eligible_names = eligible_player_names(db)
         killer_rows = db.query(
             MatchPlayer.match_id,
             MatchPlayer.player_name,
             MatchPlayer.is_winner
         ).filter(
-            MatchPlayer.faction == "KILLER"
+            MatchPlayer.faction == "KILLER",
+            visible_player(MatchPlayer.player_name),
+            MatchPlayer.player_name.in_(eligible_names),
         ).all()
 
         match_killers = {}
@@ -398,7 +447,7 @@ class KillerDuoWinRateAPI(BaseAPICommand):
         for pair, stat in duo_stats.items():
             plays = stat["plays"]
             wins = stat["wins"]
-            if plays < 5:
+            if plays < MIN_DUO_MATCHES:
                 continue
             rate = wins / plays
             qualified.append({"pair": pair, "plays": plays, "wins": wins, "rate": rate})
@@ -409,7 +458,10 @@ class KillerDuoWinRateAPI(BaseAPICommand):
             reverse=True
         )[:10]
 
-        reply = "🤝 杀手搭档胜率榜 (≥5场)\n"
+        reply = (
+            f"🤝 杀手搭档胜率榜 "
+            f"(双方各≥{MIN_PLAYER_MATCHES}场，搭档≥{MIN_DUO_MATCHES}场)\n"
+        )
         if not sorted_res:
             reply += "暂无符合条件的搭档数据。\n"
         for i, r in enumerate(sorted_res, 1):
@@ -427,7 +479,7 @@ class FactionWinRateAPI(BaseAPICommand):
 
     @property
     def description(self) -> str:
-        return "🏳️ 阵营玩家胜率榜 (civilian/killer/neutral, ≥5局)"
+        return f"🏳️ 阵营玩家胜率榜 (玩家总对局≥{MIN_PLAYER_MATCHES}局)"
 
     @property
     def requires_player(self) -> bool:
@@ -461,15 +513,19 @@ class FactionWinRateAPI(BaseAPICommand):
             msg = "❌ 阵营参数无效，可用: civilian/killer/neutral（或 平民/杀手/中立）"
             return {"reply": format_reply(msg).strip()}
 
+        eligible_names = eligible_player_names(db)
+
         results = db.query(
             MatchPlayer.player_name,
             func.count(MatchPlayer.id).label("plays"),
             func.sum(func.cast(MatchPlayer.is_winner, Integer)).label("wins")
         ).filter(
             MatchPlayer.faction == target_faction,
-            MatchPlayer.player_name.isnot(None)
-        ).group_by(MatchPlayer.player_name).having(
-            func.count(MatchPlayer.id) >= 5
+            MatchPlayer.player_name.isnot(None),
+            visible_player(MatchPlayer.player_name),
+            MatchPlayer.player_name.in_(eligible_names),
+        ).group_by(
+            MatchPlayer.player_name
         ).all()
 
         faction_name_cn = {
@@ -497,7 +553,10 @@ class FactionWinRateAPI(BaseAPICommand):
             reverse=True
         )[:10]
 
-        title = f"🏳️ {faction_name_cn.get(target_faction, target_faction)}阵营玩家胜率榜 (≥5场)"
+        title = (
+            f"🏳️ {faction_name_cn.get(target_faction, target_faction)}阵营玩家胜率榜 "
+            f"(玩家总对局≥{MIN_PLAYER_MATCHES}场)"
+        )
         title += "\n"
 
         reply = title

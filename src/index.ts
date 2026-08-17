@@ -1,12 +1,3 @@
-// ==UserScript==
-// @name         WatheMatchBot
-// @author       Dont_play
-// @version      5.0.0
-// @description  Wathe 对局统计
-// @timestamp    1775204147
-// @license      MIT
-// ==/UserScript==
-
 import { CommandManager } from './core/CommandManager';
 import { BindCommand } from './commands/BindCommand';
 import { UnbindCommand } from './commands/UnbindCommand';

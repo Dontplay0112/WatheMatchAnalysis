@@ -1,18 +1,18 @@
 {
-  "name": "a-long-story",
+  "name": "wathe-match-analysis",
   "version": "1.0.0",
-  "description": "once upon a time, ...",
-  "main": "build/index.js",
-  "typings": "build/index.d.ts",
-  "repository": "https://github.com/sealdice/seal-swordworld",
-  "license": "Apache-2.0",
+  "description": "SealDice plugin and FastAPI backend for Wathe match analysis",
+  "main": "dist/wathe.js",
+  "repository": "https://github.com/Dontplay0112/WatheMatchAnalysis",
+  "license": "MIT",
   "keywords": [],
   "scripts": {
     "build": "cross-env NODE_ENV=production node tools/build.js",
-    "build-dev": "cross-env NODE_ENV=dev node tools/build.js"
+    "build-dev": "cross-env NODE_ENV=dev node tools/build.js",
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=18"
   },
   "dependencies": {
     "lodash-es": "^4.17.21"
@@ -20,16 +20,13 @@
   "devDependencies": {
     "@types/lodash-es": "^4.17.12",
     "cross-env": "^7.0.3",
-    "esbuild": "^0.21.4",
+    "esbuild": "^0.28.2",
     "fs-extra": "^11.2.0",
-    "source-map-support": "^0.5.21"
+    "source-map-support": "^0.5.21",
+    "typescript": "^5.4.5"
   },
   "files": [
-    "build/main",
-    "build/module",
-    "!**/*.spec.*",
-    "!**/*.json",
-    "CHANGELOG.md",
+    "dist/wathe.js",
     "LICENSE",
     "README.md"
   ],

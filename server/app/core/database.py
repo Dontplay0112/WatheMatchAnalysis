@@ -1,12 +1,11 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
 
-# 适配你的目录结构：直接指向 data/wathe_data.db
-DATA_DIR = "data"
-os.makedirs(DATA_DIR, exist_ok=True)
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DATA_DIR}/data.db"
+from app.core.paths import DATA_DIR, ensure_data_directories
+
+
+ensure_data_directories()
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{(DATA_DIR / 'data.db').as_posix()}"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}

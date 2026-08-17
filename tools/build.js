@@ -30,5 +30,6 @@ const configAll = require('./build-config');
     process.exit(0);
   } catch (e) {
     console.error(e);
+    process.exitCode = 1;
   }
 })()

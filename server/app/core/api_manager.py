@@ -1,11 +1,18 @@
-import json
 import inspect
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.models import MatchPlayer
 from app.core.base_api import BaseAPICommand
+from app.core.blacklist import is_blacklisted
+
+
+class QueryRequest(BaseModel):
+    action: str = Field(default="help", max_length=64)
+    player_name: str = Field(default="", max_length=64)
+    faction: str = Field(default="", max_length=32)
 
 class APIManager:
     def __init__(self):
@@ -36,13 +43,14 @@ class APIManager:
         else:
             raise ValueError("注册的 API 实例必须提供 'action' 或 'path' 属性")
 
-    async def unified_query_gateway(self, request: Request, db: Session = Depends(get_db)):
-        body = await request.body()
-        data = json.loads(body.decode('utf-8'))
-        
-        action = data.get("action", "help").lower() or "help"
-        player_name = data.get("player_name", "")
-        faction = data.get("faction", "")
+    async def unified_query_gateway(
+        self,
+        query: QueryRequest,
+        db: Session = Depends(get_db),
+    ):
+        action = query.action.strip().lower() or "help"
+        player_name = query.player_name.strip()
+        faction = query.faction.strip()
 
         if action == "help":
             return {"reply": self._handle_help()}
@@ -64,6 +72,9 @@ class APIManager:
 
         if not player_name:
             return "❌ 请在指令后加上你要查询的玩家名，或者先使用 .wathe bind 绑定账号！"
+
+        if is_blacklisted(player_name):
+            return f"❌ 玩家【{player_name}】已被管理员屏蔽。"
 
         if not db.query(MatchPlayer.id).filter(MatchPlayer.player_name == player_name).first():
             return f"❌ 找不到玩家【{player_name}】的对局记录。"

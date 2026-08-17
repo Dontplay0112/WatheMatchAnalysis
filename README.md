@@ -1,44 +1,46 @@
-# 海豹骰列车杀手对局分析插件及python后端
+# WatheMatchAnalysis
 
+用于分析 Minecraft「列车杀手」对局的 SealDice 插件与 FastAPI 后端。
 
-## 介绍
+数据流程：RecordWathe 模组上传对局 JSON → Python 后端存档并写入 SQLite → SealDice 通过 `.wathe` 查询统计。
 
-一个用于分析MC列车杀手对局的项目，包含：
-* 一个js插件，加载进海豹骰后从python后端获取分析数据
-* 一个python后端，提供了若干接口，实现接收游戏数据并分析，同时接受js插件的请求并返回分析结果
+## SealDice 插件
 
+1. 根据需要修改 `src/utils.ts` 中的 `API_BASE_URL`。
+2. 安装依赖并检查、构建：
 
-## 如何使用
-
-### JS插件
-
-1. clone或下载项目
-
-2. 修改`src\utils.ts`中的`API_BASE_URL`为你的python后端地址(直接运行python后端，一般不需要修改)
-
-3. 安装依赖并编译js插件(需要Node.js环境)：
-``` bash
+```bash
 npm install
+npm run typecheck
 npm run build
 ```
 
-将`dist`目录下的js文件加载进海豹骰
+将 `dist/wathe.js` 加载到 SealDice。
 
-### python后端
+## Python 后端
 
-``` bash
+```bash
 cd server
-uv init
 uv sync
 uv run run.py
 ```
-或者其他任意配置python环境的方式都可以。
 
-### 游戏
+首次启动会在 `server/data/api_token.txt` 生成写入令牌。该文件已被 Git 忽略，请勿公开。
 
-除此以外还需要在游戏中安装[RecordWathe](https://github.com/Dontplay0112/RecordWathe)模组，并修改配置文件`config/recordwathe.json`用于自动上传对局记录:
-``` json
+## RecordWathe 模组
+
+在 `config/recordwathe.json` 中填写后端地址和写入令牌：
+
+```json
 {
-  "backendUrl": "http://YOUR_PYTHON_BACKEND_IP:8897/api/upload_match"
+  "backendUrl": "http://YOUR_PYTHON_BACKEND_IP:8897/api/upload_match?token=YOUR_TOKEN"
 }
 ```
+
+## 玩家黑名单
+
+编辑 `server/data/blacklist.txt`，每行填写一个 Minecraft 玩家名。空行与 `#` 注释会被忽略，匹配不区分大小写，保存后无需重启。
+
+黑名单只影响查询展示，不会删除历史 JSON 或 SQLite 数据。
+
+后端详细配置、接口与测试方式见 [`server/README.md`](server/README.md)。

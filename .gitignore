@@ -9,15 +9,13 @@ coverage
 yarn.lock
 *.zip
 *.xlsx
-package-lock.json
 .dev/
 dist/
 dev/
 
 data.db
 matches
-
-uv.lock
+api_token.txt
 
 # Python-generated files
 __pycache__/

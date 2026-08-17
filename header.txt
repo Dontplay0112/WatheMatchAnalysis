@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         WatheMatchBot
 // @author       Dont_play
-// @version      4.0.0
+// @version      5.0.0
 // @description  Wathe 对局统计
-// @timestamp    1775204147
-// 2026/3/30
+// @timestamp    1786966166
+// 2026/8/17
 // @license      MIT
-// @homepageURL  https://github.com/Dontplay0112
+// @homepageURL  https://github.com/Dontplay0112/WatheMatchAnalysis
 // ==/UserScript==

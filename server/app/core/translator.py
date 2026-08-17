@@ -1,12 +1,14 @@
 import json
-import os
 
-TRANSLATIONS_FILE = "data/translations.json"
+from app.core.paths import DATA_DIR
+
+
+TRANSLATIONS_FILE = DATA_DIR / "translations.json"
 
 _mapping = {"factions": {}, "roles": {}, "death_reasons": {}}
 
-if os.path.exists(TRANSLATIONS_FILE):
-    with open(TRANSLATIONS_FILE, 'r', encoding='utf-8') as f:
+if TRANSLATIONS_FILE.exists():
+    with TRANSLATIONS_FILE.open('r', encoding='utf-8') as f:
         _mapping.update(json.load(f))
 
 def tr(category: str, key: str) -> str:
