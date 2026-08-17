@@ -6,7 +6,7 @@ from app.core.database import get_db
 from app.main import app
 
 
-def test_http_gateway_and_protected_upload(db, tmp_path, monkeypatch):
+def test_http_gateway_and_open_upload(db, tmp_path, monkeypatch):
     token_file = tmp_path / "api_token.txt"
     matches_dir = tmp_path / "matches"
     matches_dir.mkdir()
@@ -16,7 +16,6 @@ def test_http_gateway_and_protected_upload(db, tmp_path, monkeypatch):
     monkeypatch.setattr(security, "API_TOKEN_FILE", token_file)
     monkeypatch.setattr(upload, "MATCHES_DIR", matches_dir)
     monkeypatch.setattr(blacklist, "BLACKLIST_FILE", blacklist_file)
-    token = security.ensure_api_token()
 
     def override_db():
         yield db
@@ -40,12 +39,8 @@ def test_http_gateway_and_protected_upload(db, tmp_path, monkeypatch):
         assert blocked.status_code == 200
         assert "屏蔽" in blocked.json()["reply"]
 
-        assert client.post("/api/upload_match", json=match).status_code == 401
-        uploaded = client.post(
-            "/api/upload_match",
-            json=match,
-            headers={"X-Wathe-Token": token},
-        )
+        assert client.get("/api/refresh").status_code == 401
+        uploaded = client.post("/api/upload_match", json=match)
         assert uploaded.status_code == 200
         assert uploaded.json()["status"] == "success"
         saved_files = list(matches_dir.glob("*.json"))

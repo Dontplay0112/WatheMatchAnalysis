@@ -1,7 +1,6 @@
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from app.api.upload import _safe_match_filename
 from app.core import security
 
 
@@ -10,8 +9,8 @@ def _request(query: bytes = b"", token: str | None = None) -> Request:
     return Request(
         {
             "type": "http",
-            "method": "POST",
-            "path": "/api/upload_match",
+            "method": "GET",
+            "path": "/api/refresh",
             "headers": headers,
             "query_string": query,
         }
@@ -34,12 +33,3 @@ def test_write_token_is_generated_and_required(tmp_path, monkeypatch):
 
     security.require_write_token(_request(token=token))
     security.require_write_token(_request(query=f"token={token}".encode("ascii")))
-
-
-def test_upload_filename_cannot_escape_matches_directory():
-    filename = _safe_match_filename(
-        {"matchId": "../../outside", "startMs": 1_700_000_000_000}
-    )
-    assert "/" not in filename
-    assert "\\" not in filename
-    assert filename.endswith(".json")

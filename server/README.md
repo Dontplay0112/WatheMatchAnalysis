@@ -13,12 +13,11 @@ uv run run.py
 
 ## 写入令牌
 
-首次启动会自动生成 `data/api_token.txt`。下列会修改数据的接口必须提供令牌：
+首次启动会自动生成 `data/api_token.txt`。手动刷新接口必须提供令牌：
 
-- `POST /api/upload_match`
 - `GET /api/refresh`
 
-推荐通过 `X-Wathe-Token` 请求头提供。为兼容只能配置 URL 的 RecordWathe，也可使用 `?token=...` 查询参数。令牌文件已加入 `.gitignore`。
+可通过 `X-Wathe-Token` 请求头或 `?token=...` 查询参数提供。对局上传接口 `POST /api/upload_match` 无需令牌。令牌文件已加入 `.gitignore`。
 
 ## 黑名单
 
@@ -46,7 +45,7 @@ PlayerTwo
 - `data/blacklist.txt`：查询黑名单。
 - `data/api_token.txt`：自动生成的私密写入令牌。
 
-上传体限制为 10 MiB。备份文件名由 UTC 开始时间、安全化的 `matchId` 和哈希组成，不会使用未校验路径。
+备份文件默认使用对局开始时间命名；没有 `startMs` 时使用 `matchId`。
 
 ## 查询网关
 

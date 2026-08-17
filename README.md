@@ -25,15 +25,15 @@ uv sync
 uv run run.py
 ```
 
-首次启动会在 `server/data/api_token.txt` 生成写入令牌。该文件已被 Git 忽略，请勿公开。
+首次启动会在 `server/data/api_token.txt` 生成管理用的刷新令牌。该文件已被 Git 忽略，请勿公开。
 
 ## RecordWathe 模组
 
-在 `config/recordwathe.json` 中填写后端地址和写入令牌：
+在 `config/recordwathe.json` 中填写后端地址：
 
 ```json
 {
-  "backendUrl": "http://YOUR_PYTHON_BACKEND_IP:8897/api/upload_match?token=YOUR_TOKEN"
+  "backendUrl": "http://YOUR_PYTHON_BACKEND_IP:8897/api/upload_match"
 }
 ```
 
